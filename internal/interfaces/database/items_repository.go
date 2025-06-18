@@ -148,7 +148,7 @@ func (r *ItemRepository) Update(ctx context.Context, id int64, item *entity.Item
 	// Update only allowed fields
 	query := `
 		UPDATE items 
-		SET name = ?, brand = ?, purchase_price = ?, updated_at = CURRENT_TIMESTAMP
+		SET name = ?, brand = ?, purchase_price = ?, category = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
 
@@ -156,6 +156,7 @@ func (r *ItemRepository) Update(ctx context.Context, id int64, item *entity.Item
 		item.Name,
 		item.Brand,
 		item.PurchasePrice,
+		existingItem.Category,
 		id,
 	)
 	if err != nil {
