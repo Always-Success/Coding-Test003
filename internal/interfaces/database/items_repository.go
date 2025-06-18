@@ -138,6 +138,43 @@ func (r *ItemRepository) GetSummaryByCategory(ctx context.Context) (map[string]i
 	return summary, nil
 }
 
+func (r *ItemRepository) Update(ctx context.Context, id int64, item *entity.Item) (*entity.Item, error) {
+	// First check if the item exists
+	existingItem, err := r.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update only allowed fields
+	query := `
+		UPDATE items 
+		SET name = ?, brand = ?, purchase_price = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`
+
+	result, err := r.Execute(ctx, query,
+		item.Name,
+		item.Brand,
+		item.PurchasePrice,
+		id,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", domainErrors.ErrDatabaseError, err.Error())
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to get rows affected: %s", domainErrors.ErrDatabaseError, err.Error())
+	}
+
+	if rowsAffected == 0 {
+		return nil, domainErrors.ErrItemNotFound
+	}
+
+	// Return the updated item
+	return r.FindByID(ctx, id)
+}
+
 func scanItem(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*entity.Item, error) {

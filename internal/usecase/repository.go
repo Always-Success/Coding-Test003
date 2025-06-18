@@ -22,4 +22,7 @@ type ItemRepository interface {
 
 	// GetSummaryByCategory returns item counts grouped by category (bonus feature)
 	GetSummaryByCategory(ctx context.Context) (map[string]int, error)
+
+	// Update updates an item by ID
+	Update(ctx context.Context, id int64, item *entity.Item) (*entity.Item, error)
 }

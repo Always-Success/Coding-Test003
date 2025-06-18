@@ -128,6 +128,50 @@ func (h *ItemHandler) GetSummary(c echo.Context) error {
 	return c.JSON(http.StatusOK, summary)
 }
 
+func (h *ItemHandler) UpdateItem(c echo.Context) error {
+	idStr := c.Param("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "invalid item ID",
+		})
+	}
+
+	var input usecase.UpdateItemInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "invalid request format",
+		})
+	}
+
+	// Validate that at least one field is provided
+	if input.Name == "" && input.Brand == "" && input.PurchasePrice == 0 {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error: "at least one field (name, brand, or purchase_price) must be provided",
+		})
+	}
+
+	item, err := h.itemUsecase.UpdateItem(c.Request().Context(), id, input)
+	if err != nil {
+		if domainErrors.IsNotFoundError(err) {
+			return c.JSON(http.StatusNotFound, ErrorResponse{
+				Error: "item not found",
+			})
+		}
+		if domainErrors.IsValidationError(err) {
+			return c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error:   "validation failed",
+				Details: []string{err.Error()},
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: "failed to update item",
+		})
+	}
+
+	return c.JSON(http.StatusOK, item)
+}
+
 func validateCreateItemInput(input usecase.CreateItemInput) []string {
 	var errs []string
 

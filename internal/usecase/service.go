@@ -14,6 +14,7 @@ type ItemUsecase interface {
 	CreateItem(ctx context.Context, input CreateItemInput) (*entity.Item, error)
 	DeleteItem(ctx context.Context, id int64) error
 	GetCategorySummary(ctx context.Context) (*CategorySummary, error)
+	UpdateItem(ctx context.Context, id int64, input UpdateItemInput) (*entity.Item, error)
 }
 
 type CreateItemInput struct {
@@ -22,6 +23,12 @@ type CreateItemInput struct {
 	Brand         string `json:"brand"`
 	PurchasePrice int    `json:"purchase_price"`
 	PurchaseDate  string `json:"purchase_date"`
+}
+
+type UpdateItemInput struct {
+	Name          string `json:"name,omitempty"`
+	Brand         string `json:"brand,omitempty"`
+	PurchasePrice int    `json:"purchase_price,omitempty"`
 }
 
 type CategorySummary struct {
@@ -131,4 +138,43 @@ func (u *itemUsecase) GetCategorySummary(ctx context.Context) (*CategorySummary,
 		Categories: summary,
 		Total:      total,
 	}, nil
+}
+
+func (u *itemUsecase) UpdateItem(ctx context.Context, id int64, input UpdateItemInput) (*entity.Item, error) {
+	if id <= 0 {
+		return nil, domainErrors.ErrInvalidInput
+	}
+
+	// Get existing item
+	existingItem, err := u.itemRepo.FindByID(ctx, id)
+	if err != nil {
+		if domainErrors.IsNotFoundError(err) {
+			return nil, domainErrors.ErrItemNotFound
+		}
+		return nil, fmt.Errorf("failed to retrieve item: %w", err)
+	}
+
+	// Update only provided fields
+	if input.Name != "" {
+		existingItem.Name = input.Name
+	}
+	if input.Brand != "" {
+		existingItem.Brand = input.Brand
+	}
+	if input.PurchasePrice > 0 {
+		existingItem.PurchasePrice = input.PurchasePrice
+	}
+
+	// Validate the updated item
+	if err := existingItem.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %s", domainErrors.ErrInvalidInput, err.Error())
+	}
+
+	// Update in database
+	updatedItem, err := u.itemRepo.Update(ctx, id, existingItem)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update item: %w", err)
+	}
+
+	return updatedItem, nil
 }
